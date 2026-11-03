@@ -1,0 +1,73 @@
+name: foodcenter
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-foodcenter}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-foodcenter}
+      POSTGRES_DB: ${POSTGRES_DB:-foodcenter}
+    ports:
+      - "127.0.0.1:5432:5432" # solo accesible desde tu equipo (DBeaver, psql, etc.)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-foodcenter} -d ${POSTGRES_DB:-foodcenter}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Servidor de correo de desarrollo: recibe los correos de la app y los muestra en http://localhost:8025
+  # (nunca los envía a nadie). Sirve para ver los códigos de recuperación de contraseña.
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025" # bandeja de entrada web
+      - "127.0.0.1:1025:1025" # SMTP
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-foodcenter}:${POSTGRES_PASSWORD:-foodcenter}@db:5432/${POSTGRES_DB:-foodcenter}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-en-el-env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      # Correo saliente: en desarrollo llega a Mailpit; con un proveedor real, define estas variables en .env
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: "${MAIL_FROM:-FoodCenter <no-responder@foodcenter.local>}"
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules # las dependencias viven en el contenedor, no en tu carpeta
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_PROXY_TARGET: http://backend:4000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  pgdata:

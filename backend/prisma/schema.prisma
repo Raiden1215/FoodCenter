@@ -1,0 +1,265 @@
+// Modelo de datos de FoodCenter.
+// Los precios se guardan en pesos colombianos como enteros (COP no usa centavos).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enumeraciones ----------
+
+enum CategoriaProducto {
+  COMIDA_RAPIDA
+  ALMUERZOS
+  DESAYUNOS
+  POSTRES
+  BEBIDAS
+  SNACKS
+  INGREDIENTES
+}
+
+enum EstadoLocal {
+  DISPONIBLE
+  SIN_SERVICIO
+}
+
+enum MetodoPago {
+  TRANSFERENCIA
+  QR_NEQUI
+  EFECTIVO
+}
+
+enum EstadoPedido {
+  PENDIENTE
+  HECHO
+  CANCELADO
+}
+
+enum TipoNotificacion {
+  PEDIDO_NUEVO
+  PEDIDO_HECHO
+  PEDIDO_CANCELADO
+}
+
+// ---------- Usuarios ----------
+
+model Usuario {
+  id           String   @id @default(uuid())
+  nombre       String
+  correo       String   @unique
+  passwordHash String   @map("password_hash")
+  direccion    String?
+  latitud      Float?
+  longitud     Float?
+  creadoEn     DateTime @default(now()) @map("creado_en")
+
+  local                Local? // un usuario puede tener un solo local ("Mi Local")
+  pedidos              Pedido[]
+  resenas              Resena[]
+  busquedas            Busqueda[]
+  notificaciones       Notificacion[]
+  codigosRecuperacion  CodigoRecuperacion[]
+
+  @@map("usuarios")
+}
+
+// Códigos de un solo uso para recuperar la contraseña (RF-03, RF-04, RNF-06)
+model CodigoRecuperacion {
+  id         String    @id @default(uuid())
+  usuarioId  String    @map("usuario_id")
+  codigoHash String    @map("codigo_hash")
+  expiraEn   DateTime  @map("expira_en")
+  usadoEn    DateTime? @map("usado_en")
+  intentos   Int       @default(0) // intentos fallidos de verificación (máximo 5)
+  creadoEn   DateTime  @default(now()) @map("creado_en")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("codigos_recuperacion")
+}
+
+// ---------- Locales ----------
+
+model Local {
+  id                   String              @id @default(uuid())
+  propietarioId        String              @unique @map("propietario_id")
+  nombre               String
+  logoUrl              String?             @map("logo_url")
+  portadaUrl           String?             @map("portada_url")
+  eslogan              String?
+  especialidades       CategoriaProducto[]
+  estado               EstadoLocal         @default(DISPONIBLE)
+  tiempoPreparacionMin Int?                @map("tiempo_preparacion_min")
+  tiempoEntregaMin     Int?                @map("tiempo_entrega_min")
+  zonaDomicilio        String?             @map("zona_domicilio")
+  radioDomicilioKm     Float?              @map("radio_domicilio_km")
+  precioDomicilio      Int                 @default(0) @map("precio_domicilio")
+  direccion            String
+  latitud              Float?
+  longitud             Float?
+  whatsapp             String?
+  redesSociales        Json?               @map("redes_sociales")
+  metodosPago          MetodoPago[]
+  qrNequiUrl           String?             @map("qr_nequi_url")
+  creadoEn             DateTime            @default(now()) @map("creado_en")
+  actualizadoEn        DateTime            @updatedAt @map("actualizado_en")
+
+  propietario Usuario        @relation(fields: [propietarioId], references: [id], onDelete: Cascade)
+  horarios    HorarioLocal[]
+  productos   Producto[]
+  pedidos     Pedido[]
+
+  @@map("locales")
+}
+
+// Bloques de atención por día. Se permiten varios por día (p. ej. almuerzo y cena).
+// diaSemana: 0 = domingo ... 6 = sábado. Las horas se guardan en minutos desde las 00:00.
+model HorarioLocal {
+  id        String @id @default(uuid())
+  localId   String @map("local_id")
+  diaSemana Int    @map("dia_semana")
+  abreMin   Int    @map("abre_min")
+  cierraMin Int    @map("cierra_min")
+
+  local Local @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@index([localId])
+  @@map("horarios_local")
+}
+
+// ---------- Productos ----------
+// Dirección, horarios, zona de domicilio y contacto se heredan del Local (RF-33).
+
+model Producto {
+  id                 String            @id @default(uuid())
+  localId            String            @map("local_id")
+  nombre             String
+  descripcion        String
+  categoria          CategoriaProducto
+  precio             Int
+  cantidadDisponible Int               @default(0) @map("cantidad_disponible")
+  activo             Boolean           @default(true)
+  creadoEn           DateTime          @default(now()) @map("creado_en")
+  actualizadoEn      DateTime          @updatedAt @map("actualizado_en")
+
+  local    Local            @relation(fields: [localId], references: [id], onDelete: Cascade)
+  imagenes ImagenProducto[]
+  resenas  Resena[]
+  items    ItemPedido[]
+
+  @@index([localId])
+  @@index([categoria])
+  @@map("productos")
+}
+
+model ImagenProducto {
+  id         String @id @default(uuid())
+  productoId String @map("producto_id")
+  url        String
+  orden      Int    @default(0)
+
+  producto Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@index([productoId])
+  @@map("imagenes_producto")
+}
+
+// ---------- Reseñas ----------
+
+model Resena {
+  id           String   @id @default(uuid())
+  productoId   String   @map("producto_id")
+  usuarioId    String   @map("usuario_id")
+  calificacion Int // 1 a 5
+  comentario   String?
+  creadoEn     DateTime @default(now()) @map("creado_en")
+
+  producto Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([productoId, usuarioId]) // una reseña por usuario y producto
+  @@map("resenas")
+}
+
+// ---------- Pedidos ----------
+
+model Pedido {
+  id               String       @id @default(uuid())
+  compradorId      String       @map("comprador_id")
+  localId          String       @map("local_id")
+  estado           EstadoPedido @default(PENDIENTE)
+  metodoPago       MetodoPago   @map("metodo_pago")
+  subtotal         Int
+  costoDomicilio   Int          @default(0) @map("costo_domicilio")
+  total            Int
+  direccionEntrega String       @map("direccion_entrega")
+  referencias      String?
+  latitudEntrega   Float?       @map("latitud_entrega")
+  longitudEntrega  Float?       @map("longitud_entrega")
+  comprobanteUrl   String?      @map("comprobante_url")
+  efectivoRecibido Int?         @map("efectivo_recibido") // total en efectivo registrado por el vendedor
+  creadoEn         DateTime     @default(now()) @map("creado_en")
+  atendidoEn       DateTime?    @map("atendido_en")
+
+  comprador      Usuario        @relation(fields: [compradorId], references: [id])
+  local          Local          @relation(fields: [localId], references: [id])
+  items          ItemPedido[]
+  notificaciones Notificacion[]
+
+  @@index([compradorId])
+  @@index([localId, estado])
+  @@map("pedidos")
+}
+
+// Guarda copia del nombre y precio al momento de la compra para no alterar pedidos antiguos.
+model ItemPedido {
+  id             String  @id @default(uuid())
+  pedidoId       String  @map("pedido_id")
+  productoId     String? @map("producto_id")
+  nombreProducto String  @map("nombre_producto")
+  precioUnitario Int     @map("precio_unitario")
+  cantidad       Int
+  notas          String? // cambios en ingredientes
+
+  pedido   Pedido    @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  producto Producto? @relation(fields: [productoId], references: [id], onDelete: SetNull)
+
+  @@index([pedidoId])
+  @@map("items_pedido")
+}
+
+// ---------- Búsquedas y notificaciones ----------
+
+model Busqueda {
+  id        String   @id @default(uuid())
+  usuarioId String   @map("usuario_id")
+  texto     String
+  creadoEn  DateTime @default(now()) @map("creado_en")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, creadoEn])
+  @@map("busquedas")
+}
+
+model Notificacion {
+  id        String           @id @default(uuid())
+  usuarioId String           @map("usuario_id")
+  pedidoId  String?          @map("pedido_id")
+  tipo      TipoNotificacion
+  titulo    String
+  mensaje   String
+  leida     Boolean          @default(false)
+  creadoEn  DateTime         @default(now()) @map("creado_en")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  pedido  Pedido? @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId, leida])
+  @@map("notificaciones")
+}
