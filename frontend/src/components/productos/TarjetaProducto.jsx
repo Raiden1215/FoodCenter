@@ -33,6 +33,7 @@ export default function TarjetaProducto({ producto }) {
       <div className="p-3">
         <h3 className="line-clamp-2 text-sm leading-tight font-semibold">{producto.nombre}</h3>
         <p className="mt-0.5 line-clamp-2 text-xs text-gray-600">{producto.descripcion}</p>
+        {producto.motivo && <p className="mt-1 text-xs text-brand-700 italic">{producto.motivo}</p>}
         <p className="mt-2 text-sm font-bold text-brand-700">{formatearPrecio(producto.precio)}</p>
         {producto.calificacion?.total > 0 && (
           <p className="mt-1 flex items-center gap-1 text-xs text-gray-600">

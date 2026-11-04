@@ -8,6 +8,16 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
   geminiApiKey: process.env.GEMINI_API_KEY,
   geminiModel: process.env.GEMINI_MODEL,
+  // Asistente (chatbot). La clave solo vive en el servidor; nunca se envía al navegador.
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY || null,
+    // Los nombres de modelo cambian con el tiempo (gemini-1.5-flash y gemini-2.0-flash ya se apagaron):
+    // se puede cambiar con GEMINI_MODEL sin tocar el código.
+    modelo: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
+    // Opcional: nivel de "razonamiento" (p. ej. "low") para responder más rápido en modelos que lo admiten.
+    pensamiento: process.env.GEMINI_THINKING_LEVEL || null,
+    tiempoMaxMs: Number(process.env.GEMINI_TIMEOUT_MS) || 9000, // RNF-04: responder en menos de 10 s
+  },
   // Carpeta donde se guardan las fotos subidas (logos, portadas, productos, QR).
   uploadsDir: process.env.UPLOADS_DIR ?? path.join(process.cwd(), 'uploads'),
   // Zona horaria usada para decidir si un local está abierto.

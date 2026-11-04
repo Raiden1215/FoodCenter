@@ -46,6 +46,8 @@ docker compose exec backend npx prisma migrate dev --name <cambio>   # tras edit
 
 **Recuperación de contraseña:** el correo con el código no sale a internet; aparece en la bandeja de Mailpit (http://localhost:8025). Para enviar correos reales, define las variables `SMTP_*` y `MAIL_FROM` en `.env` (ver `.env.example`).
 
+**Asistente de IA (Gemini):** consigue una clave gratuita en https://aistudio.google.com, pégala en `GEMINI_API_KEY` dentro de `.env` y ejecuta `docker compose up -d`. La clave solo la usa el servidor; nunca llega al navegador. Sin clave, el asistente avisa que no está configurado.
+
 Para explorar la base de datos puedes usar DBeaver o `psql` contra `localhost:5432`.
 
 **Borrar la base de datos y empezar de cero:** `docker compose down -v` (elimina los volúmenes).

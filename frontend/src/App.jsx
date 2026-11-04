@@ -9,6 +9,7 @@ import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import Recuperar from './pages/Recuperar.jsx';
 import Buscar from './pages/Buscar.jsx';
+import Asistente from './pages/Asistente.jsx';
 import ProductoDetalle from './pages/ProductoDetalle.jsx';
 import LocalForm from './pages/LocalForm.jsx';
 import ProductoForm from './pages/ProductoForm.jsx';
@@ -20,6 +21,7 @@ export default function App() {
       <Route element={<RequireAuth />}>
         {/* La búsqueda ocupa toda la pantalla, sin barra inferior (RF-18) */}
         <Route path="/buscar" element={<Buscar />} />
+        <Route path="/asistente" element={<Asistente />} />
         {/* El detalle tiene su propia barra de acciones, sin barra inferior */}
         <Route path="/producto/:id" element={<ProductoDetalle />} />
         <Route element={<AppLayout />}>

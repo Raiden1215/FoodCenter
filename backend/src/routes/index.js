@@ -5,6 +5,7 @@ import localesRoutes from './locales.routes.js';
 import productosRoutes from './productos.routes.js';
 import uploadsRoutes from './uploads.routes.js';
 import busquedasRoutes from './busquedas.routes.js';
+import chatbotRoutes from './chatbot.routes.js';
 
 const router = Router();
 
@@ -14,6 +15,7 @@ router.use('/locales', localesRoutes);
 router.use('/productos', productosRoutes);
 router.use('/uploads', uploadsRoutes);
 router.use('/busquedas', busquedasRoutes);
-// Próximos módulos: pedidos, chatbot...
+router.use('/chatbot', chatbotRoutes);
+// Próximo módulo: pedidos...
 
 export default router;

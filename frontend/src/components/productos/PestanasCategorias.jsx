@@ -2,14 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { CATEGORIAS } from '../../utils/constantes.js';
 
-const PESTANAS = [{ valor: null, etiqueta: 'Todos' }, ...CATEGORIAS];
+const TODOS = { valor: null, etiqueta: 'Todos' };
+export const VALOR_RECOMENDADO = 'RECOMENDADO'; // no es una categoría: pide la selección del asistente de IA
+const PESTANAS = [TODOS, ...CATEGORIAS];
+const PESTANAS_CON_IA = [TODOS, { valor: VALOR_RECOMENDADO, etiqueta: 'Recomendado por IA' }, ...CATEGORIAS];
 
 const botonFlecha =
   'absolute top-[calc(50%-2px)] z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-brand-100 bg-white text-gray-700 shadow';
 
 // valor = null significa "Todos".
 // En el celular se desliza con el dedo; en el computador hay flechas y la rueda del mouse mueve la lista.
-export default function PestanasCategorias({ valor, onChange }) {
+export default function PestanasCategorias({ valor, onChange, conIA = false }) {
+  const pestanas = conIA ? PESTANAS_CON_IA : PESTANAS;
   const lista = useRef(null);
   const [hay, setHay] = useState({ izquierda: false, derecha: false });
 
@@ -61,7 +65,7 @@ export default function PestanasCategorias({ valor, onChange }) {
         onScroll={actualizar}
         className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {PESTANAS.map((p) => {
+        {pestanas.map((p) => {
           const activa = p.valor === valor;
           return (
             <button
