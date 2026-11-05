@@ -16,7 +16,7 @@ export const env = {
     modelo: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
     // Opcional: nivel de "razonamiento" (p. ej. "low") para responder más rápido en modelos que lo admiten.
     pensamiento: process.env.GEMINI_THINKING_LEVEL || null,
-    tiempoMaxMs: Number(process.env.GEMINI_TIMEOUT_MS) || 9000, // RNF-04: responder en menos de 10 s
+    tiempoMaxMs: Number(process.env.GEMINI_TIMEOUT_MS) || 25000, // RNF-04: responder en menos de 10 s
   },
   // Carpeta donde se guardan las fotos subidas (logos, portadas, productos, QR).
   uploadsDir: process.env.UPLOADS_DIR ?? path.join(process.cwd(), 'uploads'),

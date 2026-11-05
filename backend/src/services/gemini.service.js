@@ -8,7 +8,7 @@ export const geminiConfigurado = () => Boolean(env.gemini.apiKey);
 // Llama a la API de Gemini (generateContent) y devuelve el JSON que respondió el modelo.
 // Se usa fetch directamente en lugar de un SDK para no añadir dependencias.
 //   sistema: instrucciones fijas; mensajes: [{ role: 'user' | 'model', parts: [{ text }] }]; esquema: JSON Schema de la salida.
-export async function generarJSON({ sistema, mensajes, esquema, temperatura = 0.3, maxTokens = 800 }) {
+export async function generarJSON({ sistema, mensajes, esquema, temperatura = 0.3, maxTokens = 2048 }) {
   if (!geminiConfigurado()) throw new HttpError(503, 'El asistente aún no está configurado.');
 
   const generationConfig = {
