@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, Link2, MapPin, Minus, Plus, ShoppingCart } from 'lucide-react';
+import BottomSheetPedido from '../components/pedidos/BottomSheetPedido.jsx';
 import GaleriaProducto from '../components/productos/GaleriaProducto.jsx';
 import SeccionResenas from '../components/productos/SeccionResenas.jsx';
 import { Estrellas } from '../components/ui/Estrellas.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { MAXIMO_POR_PRODUCTO, useCarrito } from '../context/CarritoContext.jsx';
 import { api } from '../services/api.js';
 import { CATEGORIAS, DIAS, ORDEN_DIAS } from '../utils/constantes.js';
@@ -25,10 +27,14 @@ function Dato({ etiqueta, children }) {
 export default function ProductoDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { usuario } = useAuth();
   const { cantidadDe, puedeAgregar, agregar } = useCarrito();
+
   const [estado, setEstado] = useState({ cargando: true });
   const [cantidad, setCantidad] = useState(1);
   const [aviso, setAviso] = useState('');
+  const [sheetAbierto, setSheetAbierto] = useState(false);
 
   useEffect(() => {
     let vigente = true;
@@ -47,11 +53,16 @@ export default function ProductoDetalle() {
     setEstado((e) => (e.producto ? { producto: { ...e.producto, calificacion } } : e));
 
   if (estado.cargando) return <p className="p-6 text-sm text-gray-500">Cargando…</p>;
+
   if (estado.error) {
     return (
       <div className="mx-auto max-w-xl space-y-3 p-6">
-        <p role="alert" className="text-sm text-red-700">{estado.noExiste ? 'Este producto no existe o ya no está disponible.' : estado.error}</p>
-        <Link to="/" className="text-sm font-semibold text-brand-600">Volver a Principal</Link>
+        <p role="alert" className="text-sm text-red-700">
+          {estado.noExiste ? 'Este producto no existe o ya no está disponible.' : estado.error}
+        </p>
+        <Link to="/" className="text-sm font-semibold text-brand-600">
+          Volver a Principal
+        </Link>
       </div>
     );
   }
@@ -63,9 +74,12 @@ export default function ProductoDetalle() {
   const enCarrito = cantidadDe(producto.id);
   const hoy = diaActualColombia();
   const categoria = CATEGORIAS.find((c) => c.valor === producto.categoria)?.etiqueta ?? producto.categoria;
-  const mapa = local.latitud != null && local.longitud != null
-    ? `https://www.openstreetmap.org/?mlat=${local.latitud}&mlon=${local.longitud}#map=17/${local.latitud}/${local.longitud}`
-    : null;
+
+  const mapa =
+    local.latitud != null && local.longitud != null
+      ? `https://www.openstreetmap.org/?mlat=${local.latitud}&mlon=${local.longitud}#map=17/${local.latitud}/${local.longitud}`
+      : null;
+
   const redes = Object.entries(local.redesSociales ?? {}).filter(([, valor]) => valor);
 
   async function copiarEnlace() {
@@ -73,7 +87,6 @@ export default function ProductoDetalle() {
     setAviso(copiado ? 'Enlace copiado' : 'No se pudo copiar el enlace');
   }
 
-  // Suma al carrito respetando las existencias y devuelve true si agregó algo.
   function sumarAlCarrito() {
     if (!puedeAgregar(producto.id)) {
       setAviso('Tu carrito está lleno (máximo 50 productos distintos)');
@@ -91,9 +104,12 @@ export default function ProductoDetalle() {
     if (sumarAlCarrito()) setAviso('Agregado al carrito');
   }
 
-  // Por ahora "Ordenar" lleva el producto al carrito; el pedido y el pago llegan en la siguiente fase.
   function ordenar() {
-    if (enCarrito > 0 || sumarAlCarrito()) navigate('/carrito');
+    if (!usuario) {
+      navigate('/login', { state: { desde: location.pathname } });
+      return;
+    }
+    setSheetAbierto(true);
   }
 
   return (
@@ -101,14 +117,27 @@ export default function ProductoDetalle() {
       <div className="mx-auto max-w-xl pb-44">
         <div className="relative">
           <GaleriaProducto imagenes={producto.imagenes} alt={producto.nombre} atenuada={!disponible} />
-          <Link to="/" aria-label="Volver" className="absolute top-3 left-3 flex size-10 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow" style={{ marginTop: 'env(safe-area-inset-top, 0px)' }}>
+          <Link
+            to="/"
+            aria-label="Volver"
+            className="absolute top-3 left-3 flex size-10 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow"
+            style={{ marginTop: 'env(safe-area-inset-top, 0px)' }}
+          >
             <ArrowLeft size={22} />
           </Link>
-          <button type="button" onClick={copiarEnlace} aria-label="Copiar enlace" className="absolute top-3 right-3 flex size-10 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow" style={{ marginTop: 'env(safe-area-inset-top, 0px)' }}>
+          <button
+            type="button"
+            onClick={copiarEnlace}
+            aria-label="Copiar enlace"
+            className="absolute top-3 right-3 flex size-10 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow"
+            style={{ marginTop: 'env(safe-area-inset-top, 0px)' }}
+          >
             <Link2 size={20} />
           </button>
           {!disponible && (
-            <span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-sm font-semibold text-white">{AVISO_ESTADO[estadoVenta]}</span>
+            <span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-sm font-semibold text-white">
+              {AVISO_ESTADO[estadoVenta]}
+            </span>
           )}
         </div>
 
@@ -130,12 +159,16 @@ export default function ProductoDetalle() {
           </header>
 
           <section aria-labelledby="titulo-descripcion">
-            <h2 id="titulo-descripcion" className="sr-only">Descripción</h2>
+            <h2 id="titulo-descripcion" className="sr-only">
+              Descripción
+            </h2>
             <p className="text-sm whitespace-pre-line text-gray-700">{producto.descripcion}</p>
           </section>
 
           <section aria-labelledby="titulo-local" className="space-y-3 rounded-2xl border border-brand-100 bg-white p-4">
-            <h2 id="titulo-local" className="sr-only">El local</h2>
+            <h2 id="titulo-local" className="sr-only">
+              El local
+            </h2>
             <div className="flex items-center gap-3">
               <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-brand-50">
                 {local.logoUrl && <img src={local.logoUrl} alt="" className="h-full w-full object-cover" />}
@@ -144,7 +177,11 @@ export default function ProductoDetalle() {
                 <p className="truncate font-semibold">{local.nombre}</p>
                 {local.eslogan && <p className="truncate text-xs text-gray-500">{local.eslogan}</p>}
               </div>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${local.abierto ? 'bg-brand-100 text-brand-700' : 'bg-gray-200 text-gray-700'}`}>
+              <span
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  local.abierto ? 'bg-brand-100 text-brand-700' : 'bg-gray-200 text-gray-700'
+                }`}
+              >
                 {local.abierto ? 'Abierto ahora' : 'Cerrado ahora'}
               </span>
             </div>
@@ -156,7 +193,9 @@ export default function ProductoDetalle() {
                 {mapa && (
                   <>
                     {' · '}
-                    <a href={mapa} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-700">Ver en el mapa</a>
+                    <a href={mapa} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-700">
+                      Ver en el mapa
+                    </a>
                   </>
                 )}
               </span>
@@ -170,28 +209,47 @@ export default function ProductoDetalle() {
                 {ORDEN_DIAS.map((dia) => {
                   const bloques = local.horarios.filter((h) => h.diaSemana === dia);
                   return (
-                    <li key={dia} className={`flex justify-between ${dia === hoy ? 'font-semibold text-brand-700' : 'text-gray-600'}`}>
-                      <span>{DIAS[dia]}{dia === hoy && ' (hoy)'}</span>
+                    <li
+                      key={dia}
+                      className={`flex justify-between ${
+                        dia === hoy ? 'font-semibold text-brand-700' : 'text-gray-600'
+                      }`}
+                    >
+                      <span>
+                        {DIAS[dia]}
+                        {dia === hoy && ' (hoy)'}
+                      </span>
                       <span>{bloques.length ? rangoHorario(bloques) : 'Cerrado'}</span>
                     </li>
                   );
                 })}
               </ul>
-              {local.horarios.length === 0 && <p className="mt-1 text-xs text-gray-500">El local no ha definido horarios.</p>}
+              {local.horarios.length === 0 && (
+                <p className="mt-1 text-xs text-gray-500">El local no ha definido horarios.</p>
+              )}
             </details>
 
             <dl className="space-y-1.5 border-t border-brand-100 pt-3">
               {local.tiempoPreparacionMin != null && <Dato etiqueta="Preparación">{local.tiempoPreparacionMin} min</Dato>}
               {local.tiempoEntregaMin != null && <Dato etiqueta="Entrega">{local.tiempoEntregaMin} min</Dato>}
               {local.zonaDomicilio && <Dato etiqueta="Zona de domicilio">{local.zonaDomicilio}</Dato>}
-              {local.radioDomicilioKm != null && <Dato etiqueta="Radio de domicilio">{local.radioDomicilioKm.toLocaleString('es-CO')} km</Dato>}
-              <Dato etiqueta="Costo del domicilio">{local.precioDomicilio > 0 ? formatearPrecio(local.precioDomicilio) : 'Sin costo'}</Dato>
+              {local.radioDomicilioKm != null && (
+                <Dato etiqueta="Radio de domicilio">{local.radioDomicilioKm.toLocaleString('es-CO')} km</Dato>
+              )}
+              <Dato etiqueta="Costo del domicilio">
+                {local.precioDomicilio > 0 ? formatearPrecio(local.precioDomicilio) : 'Sin costo'}
+              </Dato>
             </dl>
 
             {(local.whatsapp || redes.length > 0) && (
               <div className="space-y-2 border-t border-brand-100 pt-3">
                 {local.whatsapp && (
-                  <a href={`https://wa.me/${local.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="block rounded-xl border border-brand-600 py-2.5 text-center text-sm font-semibold text-brand-700">
+                  <a
+                    href={`https://wa.me/${local.whatsapp.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block rounded-xl border border-brand-600 py-2.5 text-center text-sm font-semibold text-brand-700 hover:bg-brand-50"
+                  >
                     Escribir por WhatsApp
                   </a>
                 )}
@@ -208,40 +266,96 @@ export default function ProductoDetalle() {
         </div>
       </div>
 
-      {/* Barra de acciones fija (RF-11) */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-brand-100 bg-white" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-brand-100 bg-white"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         <div className="mx-auto max-w-xl space-y-2 px-4 py-3">
           {esMio ? (
             <p className="text-center text-sm text-gray-600">
               Este es tu producto ·{' '}
-              <Link to={`/mi-local/productos/${producto.id}`} className="font-semibold text-brand-700">Editar</Link>
+              <Link to={`/mi-local/productos/${producto.id}`} className="font-semibold text-brand-700">
+                Editar
+              </Link>
             </p>
           ) : (
             <>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center rounded-xl border border-gray-300" role="group" aria-label="Cantidad">
-                  <button type="button" aria-label="Menos" disabled={!disponible || cantidad <= 1} onClick={() => setCantidad((c) => c - 1)} className="p-2.5 disabled:opacity-30"><Minus size={18} /></button>
-                  <span className="min-w-8 text-center font-semibold" aria-live="polite">{cantidad}</span>
-                  <button type="button" aria-label="Más" disabled={!disponible || cantidad >= maximo} onClick={() => setCantidad((c) => c + 1)} className="p-2.5 disabled:opacity-30"><Plus size={18} /></button>
+                  <button
+                    type="button"
+                    aria-label="Menos"
+                    disabled={!disponible || cantidad <= 1}
+                    onClick={() => setCantidad((c) => c - 1)}
+                    className="p-2.5 disabled:opacity-30"
+                  >
+                    <Minus size={18} />
+                  </button>
+                  <span className="min-w-8 text-center font-semibold" aria-live="polite">
+                    {cantidad}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Más"
+                    disabled={!disponible || cantidad >= maximo}
+                    onClick={() => setCantidad((c) => c + 1)}
+                    className="p-2.5 disabled:opacity-30"
+                  >
+                    <Plus size={18} />
+                  </button>
                 </div>
                 <p className="text-right text-sm text-gray-600" role="status">
-                  {!disponible ? <strong>{AVISO_ESTADO[estadoVenta]}</strong> : aviso || (enCarrito > 0 ? `${enCarrito} en tu carrito` : '')}
+                  {!disponible ? (
+                    <strong>{AVISO_ESTADO[estadoVenta]}</strong>
+                  ) : (
+                    aviso || (enCarrito > 0 ? `${enCarrito} en tu carrito` : '')
+                  )}
                 </p>
               </div>
+
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" disabled={!disponible} onClick={agregarAlCarrito} className="flex items-center justify-center gap-2 rounded-xl border border-brand-600 py-3 text-sm font-semibold text-brand-700 disabled:opacity-40">
+                <button
+                  type="button"
+                  disabled={!disponible}
+                  onClick={agregarAlCarrito}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-brand-600 py-3 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 disabled:opacity-40"
+                >
                   <ShoppingCart size={18} /> Agregar al carrito
                 </button>
-                <button type="button" disabled={!disponible} onClick={ordenar} className="rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white uppercase disabled:opacity-40">
+                <button
+                  type="button"
+                  disabled={!disponible}
+                  onClick={ordenar}
+                  className="rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white uppercase shadow-md transition-colors hover:bg-brand-700 disabled:opacity-40"
+                >
                   Ordenar
                 </button>
               </div>
-              {!disponible && aviso && <p className="text-center text-xs text-gray-600" role="status">{aviso}</p>}
+              {!disponible && aviso && (
+                <p className="text-center text-xs text-gray-600" role="status">
+                  {aviso}
+                </p>
+              )}
             </>
           )}
-          {esMio && aviso && <p className="text-center text-xs text-gray-600" role="status">{aviso}</p>}
+          {esMio && aviso && (
+            <p className="text-center text-xs text-gray-600" role="status">
+              {aviso}
+            </p>
+          )}
         </div>
       </div>
+
+      <BottomSheetPedido
+        producto={producto}
+        local={local}
+        cantidadInicial={cantidad}
+        abierto={sheetAbierto}
+        onCerrar={() => setSheetAbierto(false)}
+        onExito={() => {
+          setAviso('¡Pedido enviado con éxito!');
+        }}
+      />
     </div>
   );
 }

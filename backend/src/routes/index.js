@@ -6,6 +6,8 @@ import productosRoutes from './productos.routes.js';
 import uploadsRoutes from './uploads.routes.js';
 import busquedasRoutes from './busquedas.routes.js';
 import chatbotRoutes from './chatbot.routes.js';
+import pedidosRoutes from './pedidos.routes.js';
+import notificacionesRoutes from './notificaciones.routes.js';
 
 const router = Router();
 
@@ -16,6 +18,7 @@ router.use('/productos', productosRoutes);
 router.use('/uploads', uploadsRoutes);
 router.use('/busquedas', busquedasRoutes);
 router.use('/chatbot', chatbotRoutes);
-// Próximo módulo: pedidos...
+router.use('/pedidos', pedidosRoutes);
+router.use('/notificaciones', notificacionesRoutes);
 
 export default router;
